@@ -24,7 +24,16 @@ func NewApp() *App {
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	// Perform your setup here
+	config, client, err := NewSpotifyClient(a.ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Save state
+	a.config = config
 	a.ctx = ctx
+	// If user has logged in, client will be valid
+	// If not, client is null & login is expected
+	a.client = client
 }
 
 // domReady is called after front-end resources have been loaded
@@ -44,19 +53,24 @@ func (a *App) shutdown(ctx context.Context) {
 	// Perform your teardown here
 }
 
+// Whether the user is logged in already
 func (a *App) IsAuthenticated() bool {
 	return a.client != nil
 }
 
+// Login user if they aren't
 func (a *App) AuthenticateUser() bool {
-	config, client, err := NewSpotifyClient(a.ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	a.config = config
-	a.client = client
+	// Set client since user logged in
+	a.client = LoginSpotify(a.ctx)
 
-	// Save in case a new token is pulled
+	// pull token from client
+	token, err := a.client.Token()
+	if err != nil {
+		log.Fatalf("failed to get token: %v\n", err)
+	}
+	a.config.SetToken(token)
+
+	// Manually save config
 	a.config.Save()
 	// Return a bool simply to notify frontend that authentication is complete
 	return true

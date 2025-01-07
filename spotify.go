@@ -17,14 +17,7 @@ func NewSpotifyClient(ctx context.Context) (*Config, *spotify.Client, error) {
 	var client *spotify.Client
 
 	if config.Token == "" {
-		client = LoginSpotify(ctx)
-
-		token, err := client.Token()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		config.SetToken(token)
+		return config, nil, nil
 	} else {
 		token, err := config.GetToken()
 		if err != nil {

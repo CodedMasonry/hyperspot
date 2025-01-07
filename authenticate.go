@@ -26,11 +26,17 @@ var (
 	authState         = "hyperspot"
 	authCodeVerifier  = oauth2.GenerateVerifier()
 	authCodeChallenge = oauth2.S256ChallengeFromVerifier(authCodeVerifier)
+	// To prevent duplicate HTTP servers from starting & panicking
+	authIsListening = false
 )
 
 func LoginSpotify(ctx context.Context) *spotify.Client {
-	http.HandleFunc("/callback", completeAuth)
-	go http.ListenAndServe(":6873", nil)
+	if !authIsListening {
+		http.HandleFunc("/callback", completeAuth)
+		go http.ListenAndServe(":6873", nil)
+
+		authIsListening = true
+	}
 
 	url := auth.AuthURL(authState,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
