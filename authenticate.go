@@ -24,11 +24,11 @@ const redirectURI = "http://localhost:6873"
 const letterBytes = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
 var (
-	auth          = spotifyauth.New(spotifyauth.WithRedirectURL(redirectURI), spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate))
-	ch            = make(chan *spotify.Client)
-	state         = "hyperspot"
-	codeVerifier  = generateRandomString(64)
-	codeChallenge = generateCodeChallenge(codeVerifier)
+	auth              = spotifyauth.New(spotifyauth.WithRedirectURL(redirectURI), spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate))
+	authChannel       = make(chan *spotify.Client)
+	authState         = "hyperspot"
+	authCodeVerifier  = generateRandomString(64)
+	authCodeChallenge = generateCodeChallenge(authCodeVerifier)
 )
 
 func init() {
@@ -52,33 +52,33 @@ func generateCodeChallenge(code string) string {
 	return string(dst)
 }
 
-func HandleLogin(ctx context.Context) *spotify.Client {
+func LoginSpotify(ctx context.Context) *spotify.Client {
 	http.HandleFunc("/callback", completeAuth)
 	go http.ListenAndServe(":6873", nil)
 
-	url := auth.AuthURL(state,
+	url := auth.AuthURL(authState,
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
-		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
+		oauth2.SetAuthURLParam("code_challenge", authCodeChallenge),
 		oauth2.SetAuthURLParam("client_id", os.Getenv("CLIENT_ID")))
 
 	runtime.BrowserOpenURL(ctx, url)
 
-	client := <-ch
+	client := <-authChannel
 	return client
 }
 
 func completeAuth(w http.ResponseWriter, r *http.Request) {
-	tok, err := auth.Token(r.Context(), state, r, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
+	tok, err := auth.Token(r.Context(), authState, r, oauth2.SetAuthURLParam("code_verifier", authCodeVerifier))
 	if err != nil {
 		http.Error(w, "Couldn't Get Token", http.StatusForbidden)
 		log.Fatal(err)
 	}
-	if st := r.FormValue("state"); st != state {
+	if st := r.FormValue("state"); st != authState {
 		http.NotFound(w, r)
-		log.Fatalf("State Mismatch: %s != %s\n", st, state)
+		log.Fatalf("State Mismatch: %s != %s\n", st, authState)
 	}
 
 	client := spotify.New(auth.Client(r.Context(), tok))
 	fmt.Fprintf(w, "Login Completed! You Can Close This Tab")
-	ch <- client
+	authChannel <- client
 }

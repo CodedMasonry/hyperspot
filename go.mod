@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.23.4
 
 require (
+	github.com/adrg/xdg v0.5.3
 	github.com/wailsapp/wails/v2 v2.9.2
 	github.com/zmb3/spotify/v2 v2.4.3
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
@@ -12,7 +13,6 @@ require (
 )
 
 require (
-	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect

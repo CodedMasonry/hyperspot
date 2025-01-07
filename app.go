@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"github.com/zmb3/spotify/v2"
 )
@@ -11,6 +12,7 @@ import (
 // App struct
 type App struct {
 	ctx    context.Context
+	config *Config
 	client *spotify.Client
 }
 
@@ -47,7 +49,13 @@ func (a *App) IsAuthenticated() bool {
 }
 
 func (a *App) AuthenticateUser() string {
-	a.client = HandleLogin(a.ctx)
+	config, client, err := NewSpotifyClient(a.ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a.config = config
+	a.client = client
 
 	return ""
 }
