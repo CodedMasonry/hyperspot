@@ -48,14 +48,16 @@ func (a *App) IsAuthenticated() bool {
 	return a.client != nil
 }
 
-func (a *App) AuthenticateUser() string {
+func (a *App) AuthenticateUser() bool {
 	config, client, err := NewSpotifyClient(a.ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	a.config = config
 	a.client = client
 
-	return ""
+	// Save in case a new token is pulled
+	a.config.Save()
+	// Return a bool simply to notify frontend that authentication is complete
+	return true
 }

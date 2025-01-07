@@ -1,15 +1,13 @@
 import Layout from "./layout";
 import { HashRouter, Routes, Route } from "react-router-dom";
-//import { IsLoggedIn } from "../wailsjs/go/main/App";
-import Login from "./pages/login";
+import { AuthenticateUser } from "../wailsjs/go/main/App";
 import Home from "./pages/home";
 import { useState } from "react";
 
 function App() {
-  //
   const [isAuthenticated, setAuthenticated] = useState(false);
 
-  if (true) {
+  if (isAuthenticated) {
     return (
       <Layout>
         <HashRouter basename={"/"}>
@@ -20,7 +18,16 @@ function App() {
       </Layout>
     );
   } else {
-    return <Login />;
+    return (
+      <button
+        onClick={async () => {
+          // Tries to authenticate
+          setAuthenticated(await AuthenticateUser());
+        }}
+      >
+        login
+      </button>
+    );
   }
 }
 

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"crypto/aes"
-	"encoding/base64"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/adrg/xdg"
+	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/oauth2"
 )
 
@@ -66,7 +67,7 @@ func (c *Config) Save() {
 	}
 }
 
-// Saves the token; token -> json -> aes -> base64
+// Saves the token; token -> json -> encrypt -> hex
 func (c *Config) SetToken(token *oauth2.Token) error {
 	// convert struct to json
 	bytes, err := json.Marshal(token)
@@ -76,53 +77,61 @@ func (c *Config) SetToken(token *oauth2.Token) error {
 
 	// Use path to config as encryption key so token isn't stored in plain text
 	key := pathToKey(c.path)
-	crypto, err := aes.NewCipher(key)
+	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		return err
+		panic(err)
+	}
+
+	// Encryption nonce
+	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(bytes)+aead.Overhead())
+	if _, err := rand.Read(nonce); err != nil {
+		panic(err)
 	}
 
 	// encrypt json to encryted bytes
-	var encrypted []byte
-	crypto.Encrypt(encrypted, bytes)
+	encrypted := aead.Seal(nonce, nonce, bytes, nil)
 
-	// convert raw bytes to base64
-	c.Token = base64.StdEncoding.EncodeToString(encrypted)
+	// convert raw bytes to hex
+	result := hex.EncodeToString(encrypted)
+	c.Token = result
 	return nil
 }
 
-// Retrieve the token; base64 -> aes -> json -> token
+// Retrieve the token; hex -> decrypt -> json -> token
 func (c *Config) GetToken() (*oauth2.Token, error) {
 	// Check if token has been set
 	if c.Token == "" {
 		return nil, fmt.Errorf("no token set; please set a token before trying to read one")
 	}
 
-	// Convert base64 token to raw bytes
-	bytes := make([]byte, base64.StdEncoding.DecodedLen(len(c.Token)))
-	_, err := base64.StdEncoding.Decode(bytes, []byte(c.Token))
+	// Convert hex token to raw bytes
+	bytes, err := hex.DecodeString(c.Token)
 	if err != nil {
 		return nil, err
 	}
 
 	// Use path to config as encryption key so token isn't stored in plain text
 	key := pathToKey(c.path)
-	crypto, err := aes.NewCipher(key)
+	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	// decrypt bytes to json
-	var decrypted []byte
-	crypto.Decrypt(decrypted, []byte(c.Token))
+	// Decrypt to raw bytes
+	nonce, ciphertext := bytes[:aead.NonceSize()], bytes[aead.NonceSize():]
+	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	// convert json to token
-	var token *oauth2.Token
-	err = json.Unmarshal(decrypted, token)
+	var token oauth2.Token
+	err = json.Unmarshal(plaintext, &token)
 	if err != nil {
 		return nil, err
 	}
 
-	return token, nil
+	return &token, nil
 }
 
 // Don't hardcode a key, just derive one from config path
@@ -135,8 +144,9 @@ func pathToKey(path string) []byte {
 			// set byte to char
 			bytes[idx] = byte(char)
 		} else {
+			pos := idx % 32
 			// xor previous char with current char
-			bytes[idx] = bytes[idx] ^ byte(char)
+			bytes[pos] = bytes[pos] ^ byte(char)
 		}
 	}
 

@@ -15,9 +15,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
-// Client ID for Spotify Project
-const SpotifyClientId = "4c90884311b14297ac933a092eadcbb8"
-
 //go:embed all:frontend/dist
 var assets embed.FS
 
