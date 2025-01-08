@@ -6,7 +6,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <div className="mt-2 mx-2">
+      <div className="mt-2 mx-2 antialiased">
         <AppTopbar />
         <main className="m-2">{children}</main>
       </div>
